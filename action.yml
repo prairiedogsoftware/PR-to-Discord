@@ -1,6 +1,6 @@
-name: 'PR to Discord'
-author: 'Munbin-Lee'
-description: 'sends PR notifications to Discord.'
+name: 'Post PR'
+author: 'Rob N'
+description: 'Sends new PRs to Discord.'
 branding:
   icon: 'award'
   color: 'blue'
@@ -13,6 +13,18 @@ inputs:
     description: 'Pull request json.'
     required: false
     default: ${{ toJson(github.event.pull_request) }}
+  message:
+    description: 'Message for Discord post with PR.'
+    required: false
+    default: 'Please review this PR by '
+  username:
+    description: 'Username for Discord post'
+    required: false
+    default: 'Chef'
+  avatar_url:
+    description: 'Username for Discord post'
+    required: false
+    default: "https://cdn.discordapp.com/avatars/1466136912514519295/235d91eff913dabbc59ed411e350a99f.png"
 
 runs:
   using: 'composite'
@@ -20,10 +32,13 @@ runs:
     - shell: bash
       env:
         BODY: ${{ toJson(fromJson(inputs.pull_request).body) }}
-        USERNAME: ${{ toJson(fromJson(inputs.pull_request).user.login) }}
-        AVATAR_URL: ${{ toJson(fromJson(inputs.pull_request).user.avatar_url) }}
+        PR_USERNAME: ${{ fromJson(inputs.pull_request).user.login }}
+        USERNAME: ${{ inputs.username }}
+        # AVATAR_URL: ${{ toJson(fromJson(inputs.pull_request).user.avatar_url) }}
+        AVATAR_URL: ${{ inputs.avatar_url }}
         TITLE: ${{ toJson(fromJson(inputs.pull_request).title) }}
         URL: ${{ toJson(fromJson(inputs.pull_request).html_url) }}
+        MESSAGE: ${{ inputs.message }}
       run: >
         PROBLEM=$(
           echo $BODY |
@@ -34,19 +49,21 @@ runs:
         );
         echo "PROBLEM=$PROBLEM" >> $GITHUB_ENV;
         echo "USERNAME=$USERNAME" >> $GITHUB_ENV;
+        echo "PR_USERNAME=$PR_USERNAME" >> $GITHUB_ENV;
         echo "AVATAR_URL=$AVATAR_URL" >> $GITHUB_ENV;
         echo "TITLE=$TITLE" >> $GITHUB_ENV;
         echo "URL=$URL" >> $GITHUB_ENV;
+        echo "MESSAGE=$MESSAGE" >> $GITHUB_ENV;
     - shell: bash
       env:
         DATA: >
           {
-            "username": ${{ env.USERNAME }},
-            "avatar_url": ${{ env.AVATAR_URL }},
+            "username": "${{ env.USERNAME }}",
+            "avatar_url": "${{ env.AVATAR_URL }}",
             "embeds": [
               {
                 "title": ${{ env.TITLE }},
-                "description": "새로운 PR이 도착했습니다!\n\n${{ env.PROBLEM }}",
+                "description": "${{ env.MESSAGE }}**${{ env.PR_USERNAME }}**!\n\n${{ env.PROBLEM }}",
                 "url": ${{ env.URL }},
                 "color": 6847432
               }
